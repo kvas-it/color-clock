@@ -24,17 +24,26 @@ class SettingsRepository(private val context: Context) {
         val NIGHT_DIGIT_COLOR = longPreferencesKey("night_digit_color")
         val NIGHT_BRIGHTNESS = floatPreferencesKey("night_brightness")
         val USE_24_HOUR = booleanPreferencesKey("use_24_hour")
+        val DAY_BG_PRESETS = stringPreferencesKey("day_bg_presets")
+        val DAY_DIGIT_PRESETS = stringPreferencesKey("day_digit_presets")
+        val NIGHT_BG_PRESETS = stringPreferencesKey("night_bg_presets")
+        val NIGHT_DIGIT_PRESETS = stringPreferencesKey("night_digit_presets")
     }
 
     val settingsFlow: Flow<ClockSettings> = context.dataStore.data.map { prefs ->
         val defaults = ClockSettings()
         ClockSettings(
             dayStartHour = prefs[Keys.DAY_START_HOUR] ?: defaults.dayStartHour,
-            dayStartMinute = prefs[Keys.DAY_START_MINUTE] ?: defaults.dayStartMinute,
-            nightStartHour = prefs[Keys.NIGHT_START_HOUR] ?: defaults.nightStartHour,
-            nightStartMinute = prefs[Keys.NIGHT_START_MINUTE] ?: defaults.nightStartMinute,
-            dayBackgroundColor = prefs[Keys.DAY_BG_COLOR] ?: defaults.dayBackgroundColor,
-            dayDigitColor = prefs[Keys.DAY_DIGIT_COLOR] ?: defaults.dayDigitColor,
+            dayStartMinute = prefs[Keys.DAY_START_MINUTE]
+                ?: defaults.dayStartMinute,
+            nightStartHour = prefs[Keys.NIGHT_START_HOUR]
+                ?: defaults.nightStartHour,
+            nightStartMinute = prefs[Keys.NIGHT_START_MINUTE]
+                ?: defaults.nightStartMinute,
+            dayBackgroundColor = prefs[Keys.DAY_BG_COLOR]
+                ?: defaults.dayBackgroundColor,
+            dayDigitColor = prefs[Keys.DAY_DIGIT_COLOR]
+                ?: defaults.dayDigitColor,
             dayBrightness = prefs[Keys.DAY_BRIGHTNESS] ?: defaults.dayBrightness,
             nightBackgroundColor = prefs[Keys.NIGHT_BG_COLOR]
                 ?: defaults.nightBackgroundColor,
@@ -42,7 +51,16 @@ class SettingsRepository(private val context: Context) {
                 ?: defaults.nightDigitColor,
             nightBrightness = prefs[Keys.NIGHT_BRIGHTNESS]
                 ?: defaults.nightBrightness,
-            use24HourFormat = prefs[Keys.USE_24_HOUR] ?: defaults.use24HourFormat,
+            use24HourFormat = prefs[Keys.USE_24_HOUR]
+                ?: defaults.use24HourFormat,
+            dayBgPresets = prefs[Keys.DAY_BG_PRESETS]?.toPresetList()
+                ?: defaults.dayBgPresets,
+            dayDigitPresets = prefs[Keys.DAY_DIGIT_PRESETS]?.toPresetList()
+                ?: defaults.dayDigitPresets,
+            nightBgPresets = prefs[Keys.NIGHT_BG_PRESETS]?.toPresetList()
+                ?: defaults.nightBgPresets,
+            nightDigitPresets = prefs[Keys.NIGHT_DIGIT_PRESETS]?.toPresetList()
+                ?: defaults.nightDigitPresets,
         )
     }
 
@@ -59,6 +77,16 @@ class SettingsRepository(private val context: Context) {
             prefs[Keys.NIGHT_DIGIT_COLOR] = settings.nightDigitColor
             prefs[Keys.NIGHT_BRIGHTNESS] = settings.nightBrightness
             prefs[Keys.USE_24_HOUR] = settings.use24HourFormat
+            prefs[Keys.DAY_BG_PRESETS] = settings.dayBgPresets.toPresetString()
+            prefs[Keys.DAY_DIGIT_PRESETS] =
+                settings.dayDigitPresets.toPresetString()
+            prefs[Keys.NIGHT_BG_PRESETS] =
+                settings.nightBgPresets.toPresetString()
+            prefs[Keys.NIGHT_DIGIT_PRESETS] =
+                settings.nightDigitPresets.toPresetString()
         }
     }
 }
+
+private fun List<Long>.toPresetString(): String = joinToString(",")
+private fun String.toPresetList(): List<Long> = split(",").map { it.toLong() }

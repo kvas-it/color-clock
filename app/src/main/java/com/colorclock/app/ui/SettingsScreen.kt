@@ -1,16 +1,9 @@
 package com.colorclock.app.ui
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
@@ -20,17 +13,16 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import com.colorclock.app.data.ClockSettings
-import com.colorclock.app.ui.theme.presetBackgroundColors
-import com.colorclock.app.ui.theme.presetDigitColors
 import com.colorclock.app.ui.theme.toComposeColor
 import kotlin.math.roundToInt
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun SettingsScreen(
     settings: ClockSettings,
@@ -39,7 +31,6 @@ fun SettingsScreen(
 ) {
     var current by remember(settings) { mutableStateOf(settings) }
 
-    // Save on every change
     fun update(new: ClockSettings) {
         current = new
         onSettingsChange(new)
@@ -64,7 +55,6 @@ fun SettingsScreen(
                 .padding(horizontal = 24.dp, vertical = 8.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            // Preview
             PreviewStrip(current)
 
             // Time format
@@ -90,21 +80,19 @@ fun SettingsScreen(
                     update(current.copy(dayStartHour = h, dayStartMinute = m))
                 },
             )
-            ColorPickerRow(
+            ColorPresetRow(
                 label = "Background",
                 selectedColor = current.dayBackgroundColor,
-                colors = presetBackgroundColors,
-                onColorSelected = {
-                    update(current.copy(dayBackgroundColor = it))
-                },
+                presets = current.dayBgPresets,
+                onColorSelected = { update(current.copy(dayBackgroundColor = it)) },
+                onPresetsChanged = { update(current.copy(dayBgPresets = it)) },
             )
-            ColorPickerRow(
+            ColorPresetRow(
                 label = "Digits",
                 selectedColor = current.dayDigitColor,
-                colors = presetDigitColors,
-                onColorSelected = {
-                    update(current.copy(dayDigitColor = it))
-                },
+                presets = current.dayDigitPresets,
+                onColorSelected = { update(current.copy(dayDigitColor = it)) },
+                onPresetsChanged = { update(current.copy(dayDigitPresets = it)) },
             )
             BrightnessSlider(
                 value = current.dayBrightness,
@@ -121,20 +109,26 @@ fun SettingsScreen(
                     update(current.copy(nightStartHour = h, nightStartMinute = m))
                 },
             )
-            ColorPickerRow(
+            ColorPresetRow(
                 label = "Background",
                 selectedColor = current.nightBackgroundColor,
-                colors = presetBackgroundColors,
+                presets = current.nightBgPresets,
                 onColorSelected = {
                     update(current.copy(nightBackgroundColor = it))
                 },
+                onPresetsChanged = {
+                    update(current.copy(nightBgPresets = it))
+                },
             )
-            ColorPickerRow(
+            ColorPresetRow(
                 label = "Digits",
                 selectedColor = current.nightDigitColor,
-                colors = presetDigitColors,
+                presets = current.nightDigitPresets,
                 onColorSelected = {
                     update(current.copy(nightDigitColor = it))
+                },
+                onPresetsChanged = {
+                    update(current.copy(nightDigitPresets = it))
                 },
             )
             BrightnessSlider(
@@ -153,7 +147,6 @@ private fun PreviewStrip(settings: ClockSettings) {
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        // Day preview
         Box(
             modifier = Modifier
                 .weight(1f)
@@ -170,7 +163,6 @@ private fun PreviewStrip(settings: ClockSettings) {
                 fontFamily = NunitoFont,
             )
         }
-        // Night preview
         Box(
             modifier = Modifier
                 .weight(1f)
@@ -255,102 +247,80 @@ private fun TimePickerRow(
     }
 }
 
+// Tap a swatch to select it. Long-press to edit it with the HSV picker.
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun ColorPickerRow(
+private fun ColorPresetRow(
     label: String,
     selectedColor: Long,
-    colors: List<Pair<Long, String>>,
+    presets: List<Long>,
     onColorSelected: (Long) -> Unit,
+    onPresetsChanged: (List<Long>) -> Unit,
 ) {
-    var showDialog by remember { mutableStateOf(false) }
+    var editingIndex by remember { mutableStateOf<Int?>(null) }
 
     Row(
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
     ) {
         Text(label, modifier = Modifier.width(80.dp))
-        Box(
-            modifier = Modifier
-                .size(40.dp)
-                .clip(CircleShape)
-                .background(selectedColor.toComposeColor())
-                .border(2.dp, MaterialTheme.colorScheme.outline, CircleShape)
-                .clickable { showDialog = true },
-        )
-        val colorName = colors.find { it.first == selectedColor }?.second ?: ""
-        if (colorName.isNotEmpty()) {
-            Text(colorName, style = MaterialTheme.typography.bodySmall)
-        }
-    }
-
-    if (showDialog) {
-        Dialog(onDismissRequest = { showDialog = false }) {
-            Surface(
-                shape = RoundedCornerShape(16.dp),
-                modifier = Modifier.padding(16.dp),
-            ) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    Text(
-                        "Choose $label Color",
-                        style = MaterialTheme.typography.titleMedium,
-                        modifier = Modifier.padding(bottom = 12.dp),
-                    )
-                    LazyVerticalGrid(
-                        columns = GridCells.Fixed(4),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp),
-                        modifier = Modifier.height(200.dp),
-                    ) {
-                        items(colors) { (colorVal, name) ->
-                            val isSelected = colorVal == selectedColor
-                            Box(
-                                modifier = Modifier
-                                    .size(48.dp)
-                                    .clip(CircleShape)
-                                    .background(colorVal.toComposeColor())
-                                    .then(
-                                        if (isSelected) {
-                                            Modifier.border(
-                                                3.dp,
-                                                MaterialTheme.colorScheme.primary,
-                                                CircleShape,
-                                            )
-                                        } else {
-                                            Modifier.border(
-                                                1.dp,
-                                                Color.Gray.copy(alpha = 0.3f),
-                                                CircleShape,
-                                            )
-                                        }
-                                    )
-                                    .clickable {
-                                        onColorSelected(colorVal)
-                                        showDialog = false
-                                    },
-                                contentAlignment = Alignment.Center,
-                            ) {
-                                if (isSelected) {
-                                    Icon(
-                                        Icons.Filled.Check,
-                                        contentDescription = "Selected",
-                                        tint = if (colorVal == 0xFF000000L
-                                            || colorVal == 0xFF1A237E
-                                            || colorVal == 0xFF4A148C
-                                            || colorVal == 0xFF212121
-                                            || colorVal == 0xFF1B5E20
-                                            || colorVal == 0xFF311B92
-                                            || colorVal == 0xFF0D47A1
-                                            || colorVal == 0xFF3E2723
-                                        ) Color.White else Color.Black,
-                                        modifier = Modifier.size(24.dp),
-                                    )
-                                }
-                            }
+        presets.forEachIndexed { index, color ->
+            val isSelected = color == selectedColor
+            val composeColor = color.toComposeColor()
+            Box(
+                modifier = Modifier
+                    .size(40.dp)
+                    .clip(CircleShape)
+                    .background(composeColor)
+                    .then(
+                        if (isSelected) {
+                            Modifier.border(
+                                3.dp,
+                                MaterialTheme.colorScheme.primary,
+                                CircleShape,
+                            )
+                        } else {
+                            Modifier.border(
+                                1.dp,
+                                Color.Gray.copy(alpha = 0.4f),
+                                CircleShape,
+                            )
                         }
+                    )
+                    .combinedClickable(
+                        onClick = { onColorSelected(color) },
+                        onLongClick = { editingIndex = index },
+                    ),
+                contentAlignment = Alignment.Center,
+            ) {
+                if (isSelected) {
+                    val checkColor = if (composeColor.luminance() > 0.5f) {
+                        Color.Black
+                    } else {
+                        Color.White
                     }
+                    Icon(
+                        Icons.Filled.Check, "Selected",
+                        tint = checkColor,
+                        modifier = Modifier.size(20.dp),
+                    )
                 }
             }
         }
+    }
+
+    editingIndex?.let { idx ->
+        HsvColorPickerDialog(
+            initialColor = presets[idx],
+            onColorPicked = { newColor ->
+                val newPresets = presets.toMutableList()
+                newPresets[idx] = newColor
+                onPresetsChanged(newPresets)
+                onColorSelected(newColor)
+                editingIndex = null
+            },
+            onDismiss = { editingIndex = null },
+        )
     }
 }
 
