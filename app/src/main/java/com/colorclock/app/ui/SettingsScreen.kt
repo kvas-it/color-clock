@@ -227,19 +227,31 @@ private fun TimePickerRow(
             initialMinute = minute,
             is24Hour = true,
         )
-        AlertDialog(
-            onDismissRequest = { showDialog = false },
-            confirmButton = {
-                TextButton(onClick = {
-                    onTimeChange(state.hour, state.minute)
-                    showDialog = false
-                }) { Text("OK") }
-            },
-            dismissButton = {
-                TextButton(onClick = { showDialog = false }) { Text("Cancel") }
-            },
-            text = { TimePicker(state = state) },
-        )
+        Dialog(onDismissRequest = { showDialog = false }) {
+            Surface(
+                shape = RoundedCornerShape(16.dp),
+                tonalElevation = 6.dp,
+            ) {
+                Column(
+                    modifier = Modifier.padding(24.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
+                    TimeInput(state = state)
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.End,
+                    ) {
+                        TextButton(onClick = { showDialog = false }) {
+                            Text("Cancel")
+                        }
+                        TextButton(onClick = {
+                            onTimeChange(state.hour, state.minute)
+                            showDialog = false
+                        }) { Text("OK") }
+                    }
+                }
+            }
+        }
     }
 }
 
